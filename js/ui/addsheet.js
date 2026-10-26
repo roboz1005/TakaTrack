@@ -4,28 +4,37 @@ import { toast } from './toast.js';
 import { addPersonUI } from './personActions.js';
 import { templateChips, logTemplate } from './templates.js';
 import { formatTaka } from '../domain/money.js';
-import { evalExpr, pressKey, plain } from '../domain/expr.js';
+import { evalExpr, pressKeyAt, sanitizeExpr } from '../domain/expr.js';
 import { rankCategories, defaultWallet } from '../domain/suggest.js';
 import { formatRecent, localDate, localTime } from '../domain/dates.js';
 
 const TYPES = [['expense', 'Expense'], ['income', 'Income'], ['transfer', 'Transfer'], ['debt', 'Debt']];
 const DEBT = ['lend', 'borrow', 'repay_in', 'repay_out'];
 const DEBT_LABELS = [['lend', 'I lent'], ['borrow', 'I borrowed'], ['repay_in', 'They paid me'], ['repay_out', 'I paid back']];
+let active = false, backing = false;   // one sheet at a time; `backing` = our own history.back() is still in flight
 const pad = ['7', '8', '9', '⌫', '4', '5', '6', '+', '1', '2', '3', '−', '.', '0', '='];
 
 export function openAddSheet(store, edit = null, preset = null) {
+  if (backing) { addEventListener('popstate', () => openAddSheet(store, edit, preset), { once: true }); return; }   // wait for the previous sheet's history.back()
+  if (active) return;
+  active = true;
   const st = () => store.state();
   const isDebt = DEBT.includes(edit?.type);
   const m = { type: isDebt ? 'debt' : (edit?.type ?? 'expense'), debt: isDebt ? edit.type : 'lend', personId: edit?.personId ?? null, categoryId: edit?.categoryId ?? null, noWallet: isDebt && !edit.walletId, due: edit?.dueTs ? localDate(edit.dueTs) : '', amt: edit ? String(edit.amount / 100) : '', walletId: edit?.walletId ?? null, toWalletId: edit?.toWalletId ?? null,
     note: edit?.note ?? '', pinned: edit ? edit.ts : null, more: false, fee: '' };
   if (preset) Object.assign(m, preset);
+  m.caret = m.amt.length; m.amtActive = true; m.kbd = false;
   if (!m.walletId && !m.noWallet) m.walletId = defaultWallet(st().settings, st().wallets, m.type);
   if (m.toWalletId && m.walletId === m.toWalletId) m.walletId = st().wallets.find((w) => !w.archived && w.id !== m.toWalletId)?.id ?? null;
   const ts = () => m.pinned ?? Date.now();                       // live "now" unless the user pinned a moment
   const wallets = () => st().wallets.filter((w) => !w.archived);
   const cats = () => st().categories.filter((c) => c.kind === m.type && !c.archived);
   const amount = () => evalExpr(m.amt) ?? 0;
-  const close = () => ov.remove();
+  // Modal behaviour: the sheet owns one history entry, so Back cancels the sheet (not the page behind it); the page is inert + scroll-locked.
+  let pushed = false, closed = false;
+  const cleanup = () => { removeEventListener('popstate', onPop); ov.remove(); document.body.classList.remove('sheet-open'); document.getElementById('app')?.removeAttribute('inert'); active = false; };
+  const onPop = () => { if (closed) return; closed = true; pushed = false; cleanup(); };   // user pressed Back
+  const close = () => { if (closed) return; closed = true; cleanup(); if (pushed) { backing = true; addEventListener('popstate', () => { backing = false; }, { once: true }); history.back(); } };
 
   async function save(categoryId, personId = null) {
     const a = amount();
@@ -67,7 +76,7 @@ export function openAddSheet(store, edit = null, preset = null) {
     return h('div', { class: 'stack' },
       h('div', { class: 'row scroll' }, DEBT_LABELS.map(([id, l]) => h('button', { class: m.debt === id ? 'chip on' : 'chip', onclick: () => { m.debt = id; draw(); } }, l)),
         h('button', { class: m.noWallet ? 'chip on' : 'chip', onclick: () => { m.noWallet = !m.noWallet; draw(); } }, 'No wallet')),
-      (m.debt === 'lend' || m.debt === 'borrow') && h('label', { class: 'row small' }, 'Due date (optional)', h('input', { class: 'input', type: 'date', value: m.due, onchange: (e) => { m.due = e.target.value; } })),
+      (m.debt === 'lend' || m.debt === 'borrow') && h('label', { class: 'row small' }, 'Due date (optional)', h('input', { class: 'input', type: 'date', onfocus: blurAmt, value: m.due, onchange: (e) => { m.due = e.target.value; } })),
       h('div', { class: 'grid' }, people.map((p) => h('button', { class: m.personId === p.id ? 'chip on' : 'chip', onclick: () => { m.personId = p.id; if (st().settings.fastSaveTap) save(null, p.id); else draw(); } }, p.name)),
         h('button', { class: 'chip', onclick: async () => { const n = prompt('Person name'); if (n?.trim()) { const p = await addPersonUI(store, n); if (p) { m.personId = p.id; draw(); } } } }, '＋ New person')));
   }
@@ -87,24 +96,47 @@ export function openAddSheet(store, edit = null, preset = null) {
     const list = cats().sort((a, b) => (ranked.indexOf(a.id) + 1 || 99) - (ranked.indexOf(b.id) + 1 || 99));
     const shown = m.more ? list : list.slice(0, 8), sel = selectedCat();
     sheet.replaceChildren(
+      h('div', { class: 'sheet-head' }, h('button', { class: 'btn small', type: 'button', onclick: close }, 'Cancel'), h('strong', null, edit ? 'Edit transaction' : 'Add transaction')),
       !edit && st().templates.length > 0 && h('div', { class: 'row scroll' }, st().templates.map((t) => h('button', { class: 'chip', onclick: () => { close(); logTemplate(store, t); } }, t.name))),
-      h('div', { class: 'row' }, TYPES.map(([id, label]) => h('button', { class: m.type === id ? 'chip on' : 'chip', onclick: () => { m.type = id; m.categoryId = null; draw(); } }, label))),
-      h('div', { class: 'big amt-display' }, m.amt ? '৳' + m.amt.replace(/-/g, '−') : '৳0'), /[+-]/.test(m.amt) && h('div', { class: 'muted small amt-display' }, amount() ? '= ' + formatTaka(amount()) : 'incomplete'),
-      h('div', { class: 'keypad' }, pad.map((k) => h('button', { class: 'key', type: 'button', 'aria-label': k === '⌫' ? 'Backspace' : k === '=' ? 'Calculate' : k, onclick: () => {
-        m.amt = pressKey(m.amt, k); draw(); } }, k))),
+      h('div', { class: 'row wrap' }, TYPES.map(([id, label]) => h('button', { class: m.type === id ? 'chip on' : 'chip', onclick: () => { m.type = id; m.categoryId = null; draw(); } }, label))),
+      h('div', { class: 'amt-row' }, h('span', { class: 'big' }, '৳'), amtEl, h('button', { class: 'chip', type: 'button', 'aria-label': m.kbd ? 'Use the on-screen keypad' : 'Use the phone keyboard', onmousedown: (e) => e.preventDefault(), onclick: toggleKbd }, '⌨')), /[+-]/.test(m.amt) && h('div', { class: 'muted small amt-display' }, amount() ? '= ' + formatTaka(amount()) : 'incomplete'),
+      h('div', { class: 'keypad' }, pad.map((k) => h('button', { class: 'key', type: 'button', 'aria-label': k === '⌫' ? 'Backspace' : k === '=' ? 'Calculate' : k, onmousedown: (e) => e.preventDefault(), onclick: () => apply(k) }, k))),
       h('div', { class: 'row scroll' }, wallets().map((w) => h('button', { class: m.walletId === w.id ? 'chip on' : 'chip', onclick: () => { m.walletId = w.id; draw(); } }, w.name))),
       m.type === 'transfer'
         ? h('div', null, h('div', { class: 'muted small' }, 'To'), h('div', { class: 'row scroll' }, wallets().filter((w) => w.id !== m.walletId).map((w) => h('button', { class: m.toWalletId === w.id ? 'chip on' : 'chip', onclick: () => { m.toWalletId = w.id; draw(); } }, w.name))),
-          h('input', { class: 'input', placeholder: 'Fee (optional)', inputmode: 'decimal', value: m.fee, oninput: (e) => (m.fee = e.target.value) }))
+          h('input', { class: 'input', placeholder: 'Fee (optional)', inputmode: 'decimal', onfocus: blurAmt, value: m.fee, oninput: (e) => (m.fee = e.target.value) }))
         : m.type === 'debt' ? debtUi() : h('div', { class: 'grid' }, shown.map((c) => h('button', { class: sel === c.id ? 'chip on' : 'chip', 'aria-pressed': sel === c.id, onclick: () => { m.categoryId = c.id; if (st().settings.fastSaveTap) save(c.id); else draw(); } }, c.name)),
           !m.more && list.length > 8 && h('button', { class: 'chip', onclick: () => { m.more = true; draw(); } }, 'More…')),
-      h('div', { class: 'row' },
+      h('div', { class: 'row wrap' },
         h('button', { class: 'chip', onclick: () => { m.pinned = null; draw(); } }, m.pinned ? formatRecent(m.pinned, Date.now(), st().settings.timeFormat) : 'Now'),
-        h('input', { class: 'input', type: 'date', 'aria-label': 'Date', value: localDate(ts()), onchange: (e) => { m.pinned = new Date(e.target.value + 'T' + localTime(ts())).getTime(); draw(); } }),
-        h('input', { class: 'input', type: 'time', 'aria-label': 'Time', value: localTime(ts()), onchange: (e) => { m.pinned = new Date(localDate(ts()) + 'T' + e.target.value).getTime(); draw(); } })),
-      h('input', { class: 'input', placeholder: 'Note (optional)', value: m.note, oninput: (e) => (m.note = e.target.value) }),
+        h('input', { class: 'input', type: 'date', 'aria-label': 'Date', onfocus: blurAmt, value: localDate(ts()), onchange: (e) => { m.pinned = new Date(e.target.value + 'T' + localTime(ts())).getTime(); draw(); } }),
+        h('input', { class: 'input', type: 'time', 'aria-label': 'Time', onfocus: blurAmt, value: localTime(ts()), onchange: (e) => { m.pinned = new Date(localDate(ts()) + 'T' + e.target.value).getTime(); draw(); } })),
+      h('input', { class: 'input', placeholder: 'Note (optional)', onfocus: blurAmt, value: m.note, oninput: (e) => (m.note = e.target.value) }),
       h('button', { class: 'btn primary wide add-btn', onclick: onAdd }, (edit ? 'Save changes' : 'Add') + (amount() ? ' ' + formatTaka(amount()) : '')));
+    if (amtEl.value !== m.amt) amtEl.value = m.amt;
+    amtEl.style.fontSize = m.amt.length > 40 ? '1.2rem' : m.amt.length > 28 ? '1.5rem' : m.amt.length > 16 ? '1.9rem' : '';
+    fit();
+    if (m.amtActive) { amtEl.focus({ preventScroll: true }); setCaret(Math.min(m.caret ?? m.amt.length, m.amt.length)); }
   }
+  // The amount is a real editable field (tap to place the caret, select, delete, paste). The keypad edits at the caret.
+  const blurAmt = () => { m.amtActive = false; };
+  const amtEl = h('textarea', { class: 'amt-input', rows: 1, inputmode: 'none', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', placeholder: '0', 'aria-label': 'Amount. You can type a calculation like 30+20' });
+  amtEl.value = m.amt;
+  const setCaret = (pos) => { m.caret = pos; try { amtEl.setSelectionRange(pos, pos); } catch { /* not focusable yet */ } };
+  const fit = () => { amtEl.style.height = 'auto'; amtEl.style.height = amtEl.scrollHeight + 'px'; };
+  function apply(k) {
+    const r = pressKeyAt(m.amt, k, amtEl.selectionStart ?? m.amt.length, amtEl.selectionEnd ?? m.amt.length);
+    m.amt = r.amt; amtEl.value = r.amt; m.caret = r.caret; m.amtActive = true; draw();
+  }
+  function toggleKbd() { m.kbd = !m.kbd; amtEl.setAttribute('inputmode', m.kbd ? 'text' : 'none'); m.amtActive = true; amtEl.blur(); draw(); }
+  amtEl.addEventListener('focus', () => { m.amtActive = true; });
+  amtEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (/[+-]/.test(m.amt)) apply('='); else onAdd(); } });
+  amtEl.addEventListener('input', () => {
+    const pos = amtEl.selectionStart ?? amtEl.value.length, clean = sanitizeExpr(amtEl.value), caret = sanitizeExpr(amtEl.value.slice(0, pos)).length;
+    m.amt = clean; if (amtEl.value !== clean) amtEl.value = clean; m.caret = Math.min(caret, clean.length); draw();
+  });
   ov.addEventListener('keydown', (e) => e.key === 'Escape' && close());
-  sheet.tabIndex = -1; draw(); document.body.append(ov); sheet.focus();
+  sheet.tabIndex = -1; draw(); document.body.append(ov); amtEl.focus({ preventScroll: true }); setCaret(m.amt.length);
+  history.pushState({ takaSheet: true }, ''); pushed = true; addEventListener('popstate', onPop);
+  document.body.classList.add('sheet-open'); document.getElementById('app')?.setAttribute('inert', '');
 }

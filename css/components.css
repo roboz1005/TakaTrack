@@ -33,3 +33,18 @@ details { margin: 14px 0; } summary { cursor: pointer; padding: 8px 0; color: va
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .keypad { grid-template-columns: repeat(4, 1fr); }
 .add-btn { position: sticky; bottom: 0; min-height: 52px; font-size: 1.1rem; }
+
+/* quick-add: modal, always fits the screen */
+body.sheet-open { overflow: hidden; }
+.overlay, .sheet { overscroll-behavior: contain; }
+.sheet { grid-template-columns: minmax(0, 1fr); }
+.sheet > * { min-width: 0; }
+.sheet-head { position: sticky; top: 0; z-index: 2; background: var(--paper); margin: -14px -14px 0; padding: 12px 14px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
+.amt-display { overflow-wrap: anywhere; word-break: break-word; line-height: 1.15; }
+.row.wrap { flex-wrap: wrap; } .row.wrap > .input { flex: 1 1 7rem; min-width: 0; }
+
+/* editable amount (caret, tap-to-edit) */
+.amt-row { display: flex; align-items: flex-start; gap: 8px; border-bottom: 2px solid var(--line); padding-bottom: 2px; }
+.amt-row:focus-within { border-color: var(--green); }
+.amt-row .big { font-size: 2rem; line-height: 1.15; padding-top: 4px; }
+.amt-input { flex: 1; min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 2.2rem; font-weight: 700; line-height: 1.15; padding: 4px 0; resize: none; overflow: hidden; overflow-wrap: anywhere; caret-color: var(--green); }
