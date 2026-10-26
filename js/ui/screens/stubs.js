@@ -1,18 +1,25 @@
-// Screens that arrive in later milestones. Home shows the live total + wallet strip already.
 import { h } from '../h.js';
-import { formatTaka } from '../../domain/money.js';
-import { walletBalances, totals } from '../../domain/ledger.js';
-
-const soon = (title, ms, text) => () => h('div', null, h('h1', null, title),
-  h('div', { class: 'card empty' }, h('p', null, text), h('p', { class: 'muted small' }, `Arrives in milestone ${ms}.`)));
-
 export function moreScreen() {
-  const item = (href, label, sub) => h('a', { class: 'card link-card', href }, h('strong', null, label), h('span', { class: 'muted small' }, sub));
-  return h('div', null, h('h1', null, 'More'), h('div', { class: 'stack' },
-    item('#/wallets', 'Wallets', 'Add, rename, archive'),
-    item('#/goals', 'Savings goals', 'Save towards something'),
-    item('#/recurring', 'Recurring', 'Salary, rent, subscriptions'),
-    item('#/reports', 'Reports', 'Category breakdown and 12-month trend'),
-    item('#/categories', 'Categories & templates', 'Add, rename, archive'),
-    item('#/settings', 'Settings & backup', 'Display, export, import, CSV, reconcile')));
+  const item = (href, label, sub) =>
+    h(
+      "a",
+      { class: "card link-card", href },
+      h("strong", null, label),
+      h("span", { class: "muted small" }, sub),
+    );
+  return h(
+    "div",
+    null,
+    h("h1", null, "More"),
+    h(
+      "div",
+      { class: "stack" },
+      item("#/wallets", "Wallets", "Add, rename, manage accounts"),
+      item("#/goals", "Savings Goals", "Save towards specific financial targets"),
+      item("#/recurring", "Recurring Rules", "Automate salary, rent, subscriptions"),
+      item("#/reports", "Analytics & Reports", "Category breakdown & 12-month trends"),
+      item("#/categories", "Categories & Templates", "Customize labels and quick-add templates"),
+      item("#/settings", "Settings & Backups", "Theme, digits, security PIN, export/import"),
+    ),
+  );
 }

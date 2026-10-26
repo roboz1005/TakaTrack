@@ -1,12 +1,115 @@
 :root {
-  --paper: #f1f4ee; --card: #ffffff; --ink: #14231d; --muted: #5b6b63; --line: #d9e0d7;
-  --green: #0e5a43; --green-ink: #ffffff; --red: #b3312b; --gold: #a67c1f;
-  --r-card: 14px; --r-ctl: 10px; --gap: 12px; --tap: 44px;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Bengali", "Noto Sans", sans-serif;
+  --paper: #f8faf9;
+  --card: #ffffff;
+  --card-hover: #fbfdfc;
+  --ink: #101915;
+  --muted: #5e7068;
+  --muted-light: #8e9e97;
+  --line: #e3ece7;
+  --line-subtle: #f0f5f2;
+  --green: #076d50;
+  --green-hover: #055841;
+  --green-subtle: #e8f5f0;
+  --green-ink: #ffffff;
+  --red: #c93532;
+  --red-subtle: #fdf2f1;
+  --gold: #b27c19;
+  --gold-subtle: #fef8eb;
+  --blue: #1d65b4;
+  --blue-subtle: #edf4fc;
+  --r-card: 16px;
+  --r-ctl: 12px;
+  --gap: 12px;
+  --tap: 46px;
+  --shadow-sm: 0 1px 3px rgba(16, 25, 21, 0.04), 0 1px 2px rgba(16, 25, 21, 0.02);
+  --shadow-md: 0 4px 16px -2px rgba(16, 25, 21, 0.06), 0 2px 6px -1px rgba(16, 25, 21, 0.03);
+  --shadow-lg: 0 12px 32px -4px rgba(16, 25, 21, 0.1), 0 4px 12px -2px rgba(16, 25, 21, 0.04);
+  --topbar-bg: rgba(248, 250, 249, 0.88);
+  --tabbar-bg: rgba(255, 255, 255, 0.92);
+  --font: 'Plus Jakarta Sans', 'Noto Sans Bengali', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Noto Sans Bengali', monospace;
   color-scheme: light dark;
 }
+
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --paper: #0c1511; --card: #15221c; --ink: #e5eee8; --muted: #93a69b; --line: #26372f; --green: #52b88f; --green-ink: #07130e; --red: #ef7b73; --gold: #d9b45a; }
+  :root:not([data-theme="light"]) {
+    --paper: #0b110e;
+    --card: #131c18;
+    --card-hover: #18241f;
+    --ink: #edf5f0;
+    --muted: #859a8f;
+    --muted-light: #5c7066;
+    --line: #202d26;
+    --line-subtle: #18221d;
+    --green: #34d399;
+    --green-hover: #10b981;
+    --green-subtle: rgba(52, 211, 153, 0.12);
+    --green-ink: #042217;
+    --red: #fb7185;
+    --red-subtle: rgba(251, 113, 133, 0.12);
+    --gold: #fbbf24;
+    --gold-subtle: rgba(251, 191, 36, 0.12);
+    --blue: #60a5fa;
+    --blue-subtle: rgba(96, 165, 250, 0.12);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --topbar-bg: rgba(11, 17, 14, 0.88);
+    --tabbar-bg: rgba(19, 28, 24, 0.92);
+  }
 }
-:root[data-theme="dark"] { --paper: #0c1511; --card: #15221c; --ink: #e5eee8; --muted: #93a69b; --line: #26372f; --green: #52b88f; --green-ink: #07130e; --red: #ef7b73; --gold: #d9b45a; color-scheme: dark; }
-:root[data-theme="light"] { color-scheme: light; }
+
+:root[data-theme="dark"] {
+  --paper: #0b110e;
+  --card: #131c18;
+  --card-hover: #18241f;
+  --ink: #edf5f0;
+  --muted: #859a8f;
+  --muted-light: #5c7066;
+  --line: #202d26;
+  --line-subtle: #18221d;
+  --green: #34d399;
+  --green-hover: #10b981;
+  --green-subtle: rgba(52, 211, 153, 0.12);
+  --green-ink: #042217;
+  --red: #fb7185;
+  --red-subtle: rgba(251, 113, 133, 0.12);
+  --gold: #fbbf24;
+  --gold-subtle: rgba(251, 191, 36, 0.12);
+  --blue: #60a5fa;
+  --blue-subtle: rgba(96, 165, 250, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --topbar-bg: rgba(11, 17, 14, 0.88);
+  --tabbar-bg: rgba(19, 28, 24, 0.92);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --paper: #f8faf9;
+  --card: #ffffff;
+  --card-hover: #fbfdfc;
+  --ink: #101915;
+  --muted: #5e7067;
+  --muted-light: #8e9e97;
+  --line: #e3ece7;
+  --line-subtle: #f0f5f2;
+  --green: #076d50;
+  --green-hover: #055841;
+  --green-subtle: #e8f5f0;
+  --green-ink: #ffffff;
+  --red: #c93532;
+  --red-subtle: #fdf2f1;
+  --gold: #b27c19;
+  --gold-subtle: #fef8eb;
+  --blue: #1d65b4;
+  --blue-subtle: #edf4fc;
+  --shadow-sm: 0 1px 3px rgba(16, 25, 21, 0.04), 0 1px 2px rgba(16, 25, 21, 0.02);
+  --shadow-md: 0 4px 16px -2px rgba(16, 25, 21, 0.06), 0 2px 6px -1px rgba(16, 25, 21, 0.03);
+  --shadow-lg: 0 12px 32px -4px rgba(16, 25, 21, 0.1), 0 4px 12px -2px rgba(16, 25, 21, 0.04);
+  --topbar-bg: rgba(248, 250, 249, 0.88);
+  --tabbar-bg: rgba(255, 255, 255, 0.92);
+  color-scheme: light;
+}
+

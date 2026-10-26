@@ -64,3 +64,9 @@ export function formatPeriod({ start, end }, startDay = 1) {
   const s = new Date(start), e = new Date(end - 1);
   return dg(startDay === 1 ? `${LONG[s.getMonth()]} ${s.getFullYear()}` : `${s.getDate()} ${MON[s.getMonth()]} – ${e.getDate()} ${MON[e.getMonth()]}`);
 }
+/** "Mon" */
+export function weekdayShort(ts) { return WD[new Date(ts).getDay()]; }
+/** "26 Oct" */
+export function formatDayShort(ts) { const d = new Date(ts); return dg(`${d.getDate()} ${MON[d.getMonth()]}`); }
+/** Midnight `n` calendar days after the midnight of `ts` (n may be negative; DST-safe) */
+export function addDays(ts, n) { const d = new Date(ts); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n).getTime(); }

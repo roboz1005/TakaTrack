@@ -1,4 +1,5 @@
 // Derived balances. Never stored. Soft-deleted txns are ignored.
+import { addDays } from './dates.js';
 export const DEBT_TYPES = ['lend', 'borrow', 'repay_in', 'repay_out'];
 export const TXN_TYPES = ['expense', 'income', 'transfer', ...DEBT_TYPES, 'adjust'];
 
@@ -59,6 +60,20 @@ export function categoryTotals(txns, start, end, type = 'expense') {
 export function monthlySeries(txns, now, startDay = 1, n = 6, rangeOf) {
   const out = []; let ts = now;
   for (let i = 0; i < n; i++) { const r = rangeOf(ts, startDay); out.unshift({ ...r, ...periodSummary(txns, r.start, r.end) }); ts = r.start - 1; }
+  return out;
+}
+/** Last n calendar days ending with the day containing `now`, oldest first: [{start,end,income,expense,net}] (7 = one week) */
+export function dailySeries(txns, now, n = 7) {
+  const today = addDays(now, 0), out = [];
+  for (let i = n - 1; i >= 0; i--) { const start = addDays(today, -i), end = addDays(start, 1); out.push({ start, end, ...periodSummary(txns, start, end) }); }
+  return out;
+}
+/** A period [start, end) cut into 7-day weeks: up to 4 full weeks, then ONE bucket for the leftover days (extra: true).
+ *  A 31-day month gives W1-W4 (28 days) + 3 extra days; a 28-day month gives exactly 4 weeks. Oldest first. */
+export function weeklySeries(txns, start, end) {
+  const out = []; let s = start;
+  for (let w = 1; w <= 4 && s < end; w++) { const e = Math.min(addDays(s, 7), end); out.push({ start: s, end: e, week: w, extra: false, ...periodSummary(txns, s, e) }); s = e; }
+  if (s < end) out.push({ start: s, end, week: 5, extra: true, ...periodSummary(txns, s, end) });
   return out;
 }
 /** Budget progress for a period: [{categoryId, limit, spent, pct, over}] */

@@ -26,7 +26,7 @@ export function sanitizeExpr(raw) {
 /** Keypad press at the caret/selection [start,end]. Returns { amt, caret } */
 export function pressKeyAt(amt, k, start = amt.length, end = start) {
   const a = Math.max(0, Math.min(start, end, amt.length)), b = Math.min(amt.length, Math.max(start, end)), same = { amt, caret: a };
-  if (k === '⌫') { const from = a === b ? a - 1 : a; if (from < 0) return same; return { amt: amt.slice(0, from) + amt.slice(b), caret: from }; }
+  if (k === 'backspace' || k === '⌫') { const from = a === b ? a - 1 : a; if (from < 0) return same; return { amt: amt.slice(0, from) + amt.slice(b), caret: from }; }
   if (k === '=') { const v = evalExpr(amt), r = v == null ? amt : plain(v); return { amt: r, caret: r.length }; }
   const left = amt.slice(0, a), right = amt.slice(b), fit = (r, caret) => (r.length > MAX ? same : { amt: r, caret });
   if (k === '+' || k === '−' || k === '-') return /\d$/.test(left) && !isOp(right[0] ?? '') ? fit(left + (k === '+' ? '+' : '-') + right, a + 1) : same;

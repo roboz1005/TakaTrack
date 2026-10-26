@@ -29,7 +29,7 @@ export function createStore(db, { now = () => Date.now(), uuid = () => globalThi
       if (!out) throw new Error(`${kind} not found`);
       await db.put(key, out); return out;
     },
-    'wallet/add': ({ name, kind = 'cash', color = '#0e5a43', openingBalance = 0 }) =>
+    'wallet/add': ({ name, kind = 'cash', color = '#076d50', openingBalance = 0 }) =>
       actions['entity/add']({ kind: 'wallet', fields: { name: name.trim(), kind, color, icon: '', openingBalance: intOr0(openingBalance), archived: false, order: state.wallets.length } }),
     'wallet/rename': ({ id, name }) => actions['entity/update']({ kind: 'wallet', id, patch: { name: name.trim() } }),
     'wallet/archive': ({ id, archived = true }) => actions['entity/update']({ kind: 'wallet', id, patch: { archived } }),
