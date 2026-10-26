@@ -1,0 +1,44 @@
+import { h } from '../h.js';
+import { toast } from '../toast.js';
+import { openAddSheet } from '../addsheet.js';
+import { formatTaka } from '../../domain/money.js';
+import { groupByDay, formatDay, formatTime, formatDateTime } from '../../domain/dates.js';
+
+const SIGN = { expense: -1, income: 1, lend: -1, borrow: 1, repay_in: 1, repay_out: -1 };
+let q = '', wf = null, cf = '', pf = '', from = '', to = '';
+export function transactionsScreen({ state, store }) {
+  const refresh = () => store.dispatch({ type: 'settings/update', patch: {} });
+  const name = (list, id) => list.find((x) => x.id === id)?.name ?? '';
+  const live = state.txns.filter((t) => !t.deletedAt && (!wf || t.walletId === wf || t.toWalletId === wf) && (!cf || t.categoryId === cf) && (!pf || t.personId === pf) && (!from || t.ts >= new Date(from + 'T00:00').getTime()) && (!to || t.ts <= new Date(to + 'T23:59:59.999').getTime()) && (!q || [name(state.categories, t.categoryId), name(state.wallets, t.walletId), t.note, String(t.amount / 100)].join(' ').toLowerCase().includes(q.toLowerCase())));
+  const row = (t) => h('button', { class: 'card trow', onclick: () => detail(t, state, store) },
+    h('div', null, h('strong', null, t.type === 'transfer' ? `${name(state.wallets, t.walletId)} → ${name(state.wallets, t.toWalletId)}` : name(state.categories, t.categoryId) || t.type),
+      h('div', { class: 'muted small' }, `${formatTime(t.ts, state.settings.timeFormat)} · ${name(state.wallets, t.walletId)}${t.note ? ' · ' + t.note : ''}`)),
+    h('div', { class: 'amount' }, (SIGN[t.type] < 0 ? '−' : SIGN[t.type] > 0 ? '+' : '') + formatTaka(t.amount)));
+  return h('div', null, h('h1', null, 'Transactions'),
+    h('div', { class: 'row scroll' }, [[null, 'All'], ...state.wallets.map((w) => [w.id, w.name])].map(([id, l]) => h('button', { class: wf === id ? 'chip on' : 'chip', onclick: () => { wf = id; store.dispatch({ type: 'settings/update', patch: {} }); } }, l))),
+    h('div', { class: 'row scroll' },
+      h('select', { class: 'input', 'aria-label': 'Category', onchange: (e) => { cf = e.target.value; refresh(); } }, h('option', { value: '' }, 'Any category'), state.categories.map((c) => h('option', { value: c.id, selected: c.id === cf ? true : null }, c.name))),
+      h('select', { class: 'input', 'aria-label': 'Person', onchange: (e) => { pf = e.target.value; refresh(); } }, h('option', { value: '' }, 'Any person'), state.people.filter((p) => !p.archived).map((p) => h('option', { value: p.id, selected: p.id === pf ? true : null }, p.name)))),
+    h('div', { class: 'row' }, h('input', { class: 'input', type: 'date', 'aria-label': 'From', value: from, onchange: (e) => { from = e.target.value; refresh(); } }), h('input', { class: 'input', type: 'date', 'aria-label': 'To', value: to, onchange: (e) => { to = e.target.value; refresh(); } })),
+    h('input', { class: 'input', type: 'search', placeholder: 'Search category, wallet, note, amount', value: q, onchange: (e) => { q = e.target.value; store.dispatch({ type: 'settings/update', patch: {} }); } }),
+    live.length ? groupByDay(live).map((g) => h('section', null, h('h2', { class: 'dayhead' }, formatDay(g.ts)), h('div', { class: 'stack' }, g.items.map(row))))
+      : h('div', { class: 'card empty' }, h('p', null, 'No transactions yet. Tap + to add one.')));
+}
+function detail(t, state, store) {
+  const f = state.settings.timeFormat, close = () => ov.remove();
+  const ov = h('div', { class: 'overlay', onclick: (e) => e.target === ov && close() }, h('div', { class: 'sheet' },
+    h('h2', null, formatTaka(t.amount) + ' · ' + t.type),
+    h('p', null, 'Happened: ' + formatDateTime(t.ts, f)), h('p', null, 'Added: ' + formatDateTime(t.createdAt, f) + (Math.abs(t.ts - t.createdAt) > 300000 ? '  (added later)' : '')),
+    t.updatedAt !== t.createdAt && h('p', null, 'Edited: ' + formatDateTime(t.updatedAt, f)),
+    t.type !== 'adjust' && h('div', { class: 'row scroll' }, [['monthly', 'Repeat monthly'], ['weekly', 'Repeat weekly']].map(([freq, label]) => h('button', { class: 'btn small', onclick: async () => {
+      const d = new Date(t.ts), nm = state.categories.find((c) => c.id === t.categoryId)?.name ?? t.type;
+      await store.dispatch({ type: 'recurring/add', name: nm, txn: { type: t.type, amount: t.amount, walletId: t.walletId, toWalletId: t.toWalletId, categoryId: t.categoryId, personId: t.personId, note: t.note },
+        rule: { freq, day: freq === 'monthly' ? d.getDate() : d.getDay(), hour: d.getHours(), minute: d.getMinutes() } });
+      close(); toast(`${label}: see More → Recurring`); } }, label))),
+    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { close(); openAddSheet(store, t); } }, 'Edit'),
+      t.type !== 'adjust' && h('button', { class: 'btn', onclick: async () => { const n = prompt('Template name'); if (n?.trim()) { close(); await store.dispatch({ type: 'entity/add', kind: 'template', fields: { name: n.trim(), type: t.type, amount: t.amount, walletId: t.walletId, categoryId: t.categoryId, personId: t.personId, order: state.templates.length } }); toast('Template saved'); } } }, 'Save as template'),
+      h('button', { class: 'btn', onclick: async () => { close(); const ids = [t.id, ...state.txns.filter((x) => x.linkId === t.id && !x.deletedAt).map((x) => x.id)];
+        for (const id of ids) await store.dispatch({ type: 'txn/delete', id });
+        document.querySelector('.toast')?.remove(); const el = h('div', { class: 'toast' }, h('span', null, 'Deleted'), h('button', { class: 'btn small', onclick: async () => { for (const id of ids) await store.dispatch({ type: 'txn/restore', id }); el.remove(); } }, 'Undo')); document.body.append(el); setTimeout(() => el.remove(), 5000); } }, 'Delete'))));
+  document.body.append(ov);
+}
