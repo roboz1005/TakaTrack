@@ -1,5 +1,6 @@
 import { h } from '../h.js';
 import { templateChips } from '../templates.js';
+import { txnTitle } from '../../domain/labels.js';
 import { formatTaka as rawTaka } from '../../domain/money.js';
 import { backupDue, daysSinceBackup } from '../../domain/backup.js';
 import { doExport } from '../../backup.js';
@@ -54,6 +55,6 @@ export function homeScreen({ state, store }) {
       due.map((d) => { const p = state.people.find((x) => x.id === d.personId); return h('a', { class: 'row small', href: '#/person/' + d.personId, style: { padding: '6px 0' } },
         h('span', { style: { flex: 1 } }, d.balance > 0 ? `${p?.name} owes you ${formatTaka(d.balance)}` : `You owe ${p?.name} ${formatTaka(-d.balance)}`), h('span', { style: { color: d.overdue ? 'var(--red)' : 'inherit' } }, (d.overdue ? 'Overdue · ' : '') + formatRecent(d.txn.dueTs, Date.now(), f).replace(/ \d.*$/, ''))); })); })(),
     h('h2', { class: 'dayhead' }, 'Recent'),
-    recent.length ? h('div', { class: 'stack' }, recent.map((x) => h('div', { class: 'card trow' }, h('div', null, h('strong', null, state.categories.find((c) => c.id === x.categoryId)?.name ?? x.type), h('div', { class: 'muted small' }, formatRecent(x.ts, Date.now(), f))), h('div', { class: 'amount' }, formatTaka(x.amount)))))
+    recent.length ? h('div', { class: 'stack' }, recent.map((x) => h('div', { class: 'card trow' }, h('div', null, h('strong', null, txnTitle(x, state)), h('div', { class: 'muted small' }, formatRecent(x.ts, Date.now(), f))), h('div', { class: 'amount' }, formatTaka(x.amount)))))
       : h('div', { class: 'card empty' }, h('p', null, 'No transactions yet. Tap + to add your first.')));
 }

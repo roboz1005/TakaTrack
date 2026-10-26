@@ -10,9 +10,7 @@ export function localDate(ts) { return dayKey(ts); }
 export function localTime(ts) { const d = new Date(ts); return `${p2(d.getHours())}:${p2(d.getMinutes())}`; }
 
 function use12h(timeFormat) {
-  if (timeFormat === '12h') return true;
-  if (timeFormat === '24h') return false;
-  return !!new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12;
+  return timeFormat !== '24h';   // AM/PM is the default (old 'auto' setting counts as 12-hour)
 }
 /** "3:45 PM" or "15:45" */
 export function formatTime(ts, timeFormat = 'auto') {

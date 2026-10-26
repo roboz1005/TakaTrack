@@ -1,6 +1,7 @@
 import { h } from '../h.js';
 import { toast } from '../toast.js';
 import { openAddSheet } from '../addsheet.js';
+import { txnTitle } from '../../domain/labels.js';
 import { formatTaka } from '../../domain/money.js';
 import { groupByDay, formatDay, formatTime, formatDateTime } from '../../domain/dates.js';
 
@@ -9,17 +10,20 @@ let q = '', wf = null, cf = '', pf = '', from = '', to = '';
 export function transactionsScreen({ state, store }) {
   const refresh = () => store.dispatch({ type: 'settings/update', patch: {} });
   const name = (list, id) => list.find((x) => x.id === id)?.name ?? '';
-  const live = state.txns.filter((t) => !t.deletedAt && (!wf || t.walletId === wf || t.toWalletId === wf) && (!cf || t.categoryId === cf) && (!pf || t.personId === pf) && (!from || t.ts >= new Date(from + 'T00:00').getTime()) && (!to || t.ts <= new Date(to + 'T23:59:59.999').getTime()) && (!q || [name(state.categories, t.categoryId), name(state.wallets, t.walletId), t.note, String(t.amount / 100)].join(' ').toLowerCase().includes(q.toLowerCase())));
+  const live = state.txns.filter((t) => !t.deletedAt && (!wf || t.walletId === wf || t.toWalletId === wf) && (!cf || t.categoryId === cf) && (!pf || t.personId === pf) && (!from || t.ts >= new Date(from + 'T00:00').getTime()) && (!to || t.ts <= new Date(to + 'T23:59:59.999').getTime()) && (!q || [txnTitle(t, state), name(state.categories, t.categoryId), name(state.wallets, t.walletId), t.note, String(t.amount / 100)].join(' ').toLowerCase().includes(q.toLowerCase())));
   const row = (t) => h('button', { class: 'card trow', onclick: () => detail(t, state, store) },
-    h('div', null, h('strong', null, t.type === 'transfer' ? `${name(state.wallets, t.walletId)} → ${name(state.wallets, t.toWalletId)}` : name(state.categories, t.categoryId) || t.type),
-      h('div', { class: 'muted small' }, `${formatTime(t.ts, state.settings.timeFormat)} · ${name(state.wallets, t.walletId)}${t.note ? ' · ' + t.note : ''}`)),
+    h('div', null, h('strong', null, txnTitle(t, state)),
+      h('div', { class: 'muted small' }, [formatTime(t.ts, state.settings.timeFormat), name(state.wallets, t.walletId) || 'No wallet', t.note].filter(Boolean).join(' · '))),
     h('div', { class: 'amount' }, (SIGN[t.type] < 0 ? '−' : SIGN[t.type] > 0 ? '+' : '') + formatTaka(t.amount)));
   return h('div', null, h('h1', null, 'Transactions'),
     h('div', { class: 'row scroll' }, [[null, 'All'], ...state.wallets.map((w) => [w.id, w.name])].map(([id, l]) => h('button', { class: wf === id ? 'chip on' : 'chip', onclick: () => { wf = id; store.dispatch({ type: 'settings/update', patch: {} }); } }, l))),
     h('div', { class: 'row scroll' },
       h('select', { class: 'input', 'aria-label': 'Category', onchange: (e) => { cf = e.target.value; refresh(); } }, h('option', { value: '' }, 'Any category'), state.categories.map((c) => h('option', { value: c.id, selected: c.id === cf ? true : null }, c.name))),
       h('select', { class: 'input', 'aria-label': 'Person', onchange: (e) => { pf = e.target.value; refresh(); } }, h('option', { value: '' }, 'Any person'), state.people.filter((p) => !p.archived).map((p) => h('option', { value: p.id, selected: p.id === pf ? true : null }, p.name)))),
-    h('div', { class: 'row' }, h('input', { class: 'input', type: 'date', 'aria-label': 'From', value: from, onchange: (e) => { from = e.target.value; refresh(); } }), h('input', { class: 'input', type: 'date', 'aria-label': 'To', value: to, onchange: (e) => { to = e.target.value; refresh(); } })),
+    h('div', { class: 'row wrap' },
+      h('label', { class: 'field' }, h('span', { class: 'muted small' }, 'From'), h('input', { class: 'input', type: 'date', value: from, onchange: (e) => { from = e.target.value; refresh(); } })),
+      h('label', { class: 'field' }, h('span', { class: 'muted small' }, 'To'), h('input', { class: 'input', type: 'date', value: to, onchange: (e) => { to = e.target.value; refresh(); } })),
+      (from || to) && h('button', { class: 'btn small', onclick: () => { from = ''; to = ''; refresh(); } }, 'Clear')),
     h('input', { class: 'input', type: 'search', placeholder: 'Search category, wallet, note, amount', value: q, onchange: (e) => { q = e.target.value; store.dispatch({ type: 'settings/update', patch: {} }); } }),
     live.length ? groupByDay(live).map((g) => h('section', null, h('h2', { class: 'dayhead' }, formatDay(g.ts)), h('div', { class: 'stack' }, g.items.map(row))))
       : h('div', { class: 'card empty' }, h('p', null, 'No transactions yet. Tap + to add one.')));
@@ -27,7 +31,8 @@ export function transactionsScreen({ state, store }) {
 function detail(t, state, store) {
   const f = state.settings.timeFormat, close = () => ov.remove();
   const ov = h('div', { class: 'overlay', onclick: (e) => e.target === ov && close() }, h('div', { class: 'sheet' },
-    h('h2', null, formatTaka(t.amount) + ' · ' + t.type),
+    h('h2', null, formatTaka(t.amount) + ' · ' + txnTitle(t, state)),
+    t.note && h('p', null, 'Note: ' + t.note),
     h('p', null, 'Happened: ' + formatDateTime(t.ts, f)), h('p', null, 'Added: ' + formatDateTime(t.createdAt, f) + (Math.abs(t.ts - t.createdAt) > 300000 ? '  (added later)' : '')),
     t.updatedAt !== t.createdAt && h('p', null, 'Edited: ' + formatDateTime(t.updatedAt, f)),
     t.type !== 'adjust' && h('div', { class: 'row scroll' }, [['monthly', 'Repeat monthly'], ['weekly', 'Repeat weekly']].map(([freq, label]) => h('button', { class: 'btn small', onclick: async () => {

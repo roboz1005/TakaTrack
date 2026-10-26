@@ -29,7 +29,7 @@ export function settingsScreen({ state, store }) {
     h('div', { class: 'stack' },
       toggle('Tap a category or person to save instantly (skips the Add button)', 'fastSaveTap'), toggle('Open straight into Add', 'launchIntoAdd'), toggle('Hide balances', 'hideBalances'),
       h('label', { class: 'card trow' }, h('span', null, 'Time format'), h('select', { class: 'input', style: { width: 'auto' }, onchange: (e) => set({ timeFormat: e.target.value }) },
-        ['auto', '12h', '24h'].map((v) => h('option', { value: v, selected: v === s.timeFormat ? true : null }, v)))),
+        [['12h', '12-hour (AM/PM)'], ['24h', '24-hour']].map(([v, l]) => h('option', { value: v, selected: v === (s.timeFormat === '24h' ? '24h' : '12h') ? true : null }, l)))),
       h('label', { class: 'card trow' }, h('span', null, 'Month starts on day'), h('input', { class: 'input', style: { width: '5rem' }, type: 'number', min: 1, max: 28, value: s.monthStartDay, onchange: (e) => set({ monthStartDay: Math.min(28, Math.max(1, Number(e.target.value) || 1)) }) }))),
     h('div', { class: 'stack' }, h('label', { class: 'card trow' }, h('span', null, 'Theme'), h('select', { class: 'input', style: { width: 'auto' }, onchange: (e) => set({ theme: e.target.value }) }, ['auto', 'light', 'dark'].map((v) => h('option', { value: v, selected: v === s.theme ? true : null }, v)))),
       h('label', { class: 'card trow' }, h('span', null, 'Digits'), h('select', { class: 'input', style: { width: 'auto' }, onchange: (e) => set({ digits: e.target.value }) }, [['latin', '1234'], ['bangla', '১২৩৪']].map(([v, l]) => h('option', { value: v, selected: v === (s.digits ?? 'latin') ? true : null }, l)))),

@@ -8,7 +8,7 @@ export const WALLET_PRESETS = [
 ];
 export function defaultSettings() {
   return { id: 'app', currency: 'BDT', locale: 'en-BD', monthStartDay: 1, fastSave: true, launchIntoAdd: false,
-    hideBalances: false, theme: 'auto', lang: 'en', timeFormat: 'auto', lastUsed: {},
+    hideBalances: false, theme: 'auto', lang: 'en', timeFormat: '12h', lastUsed: {},
     backup: { lastAt: null, nudgeDays: 7 }, schemaVersion: SCHEMA_VERSION, onboarded: false };
 }
 export function defaultCategories() {
